@@ -10,7 +10,7 @@ terraform {
 }
 
 resource "aws_s3_bucket" "this" {
-  bucket        = "${var.project_name}-${var.env}"
+  bucket        = "${var.project_name}-${var.env}-${random_id.suffix.hex}"
   force_destroy = false
 
   tags = merge(
