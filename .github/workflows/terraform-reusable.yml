@@ -19,14 +19,14 @@ on:
         description: "Terraform var file (e.g. dev.tfvars)"
         required: true
         type: string
-      aws_region:
-        description: "AWS region for credentials (usually matches provider region)"
+      aws_role_arn:
+        description: "AWS IAM role ARN to assume"
         required: true
         type: string
-
-permissions:
-  id-token: write
-  contents: read
+      aws_region:
+        description: "AWS region for credentials"
+        required: true
+        type: string
 
 jobs:
   terraform:
@@ -41,6 +41,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working_directory }}
 
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,7 +52,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ inputs.aws_role_arn }}
           aws-region: ${{ inputs.aws_region }}
 
       - name: Setup Terraform
