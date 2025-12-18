@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   apply-staging:
     uses: ./.github/workflows/terraform-reusable.yml

@@ -5,6 +5,10 @@ on:
     branches:
       - 'feature/*'
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   plan-dev:
     uses: ./.github/workflows/terraform-reusable.yml

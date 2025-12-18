@@ -3,6 +3,10 @@ name: Terraform Deploy to prod (manual)
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   apply-prod:
     # run only from main
