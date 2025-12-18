@@ -1,0 +1,16 @@
+name: Terraform Deploy to prod (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply-prod:
+    # run only from main
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "apply"
+      environment: "prod"
+      working_directory: "envs/prod"
+      var_file: "prod.tfvars"
+      aws_region: "us-east-1"

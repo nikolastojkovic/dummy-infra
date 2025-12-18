@@ -1,0 +1,16 @@
+name: Terraform Plan on feature branch
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+
+jobs:
+  plan-dev:
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "plan"
+      environment: "dev"
+      working_directory: "envs/dev"
+      var_file: "dev.tfvars"
+      aws_region: "eu-central-1"

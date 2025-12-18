@@ -1,0 +1,16 @@
+name: Terraform Deploy to staging on main push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  apply-staging:
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "apply"
+      environment: "staging"
+      working_directory: "envs/staging"
+      var_file: "staging.tfvars"
+      aws_region: "eu-west-1"
