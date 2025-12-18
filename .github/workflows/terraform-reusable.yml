@@ -1,0 +1,64 @@
+name: Terraform Reusable
+
+on:
+  workflow_call:
+    inputs:
+      action:
+        description: "plan or apply"
+        required: true
+        type: string
+      environment:
+        description: "GitHub environment name (dev/staging/prod)"
+        required: true
+        type: string
+      working_directory:
+        description: "Terraform working directory (e.g. envs/dev)"
+        required: true
+        type: string
+      var_file:
+        description: "Terraform var file (e.g. dev.tfvars)"
+        required: true
+        type: string
+      aws_region:
+        description: "AWS region for credentials (usually matches provider region)"
+        required: true
+        type: string
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    concurrency:
+      group: terraform-${{ inputs.environment }}
+      cancel-in-progress: false
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        if: inputs.action == 'plan'
+        run: terraform plan -input=false -var-file="${{ inputs.var_file }}"
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false -auto-approve -var-file="${{ inputs.var_file }}"

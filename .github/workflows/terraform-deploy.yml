@@ -1,0 +1,47 @@
+name: Terraform Deploy
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy (prod only)"
+        required: true
+        default: "prod"
+        type: choice
+        options:
+          - prod
+
+jobs:
+  apply-dev:
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "apply"
+      environment: "dev"
+      working_directory: "envs/dev"
+      var_file: "dev.tfvars"
+      aws_region: "eu-central-1"
+
+  apply-staging:
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "apply"
+      environment: "staging"
+      working_directory: "envs/staging"
+      var_file: "staging.tfvars"
+      aws_region: "eu-west-1"
+
+  apply-prod:
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "apply"
+      environment: "prod"
+      working_directory: "envs/prod"
+      var_file: "prod.tfvars"
+      aws_region: "us-east-1"
