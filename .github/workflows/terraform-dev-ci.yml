@@ -1,0 +1,40 @@
+name: Terraform Dev CI
+
+on:
+  # 1) Plan on every push in feature/* branch
+  push:
+    branches:
+      - 'feature/*'
+  # 2) Deploy on dev on PR -> main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # ----------------------------------------------------
+  # Plan for dev on push in feature/* branch
+  # ----------------------------------------------------
+  plan-dev-on-feature-push:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "plan"
+      environment: "dev"
+      working_directory: "envs/dev"
+      var_file: "dev.tfvars"
+      aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
+      aws_region: "eu-central-1"
+
+  # ----------------------------------------------------
+  # Deploy on dev on PR (feature/* -> main)
+  # ----------------------------------------------------
+  apply-dev-on-pr:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "apply"
+      environment: "dev"
+      working_directory: "envs/dev"
+      var_file: "dev.tfvars"
+      aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
+      aws_region: "eu-central-1"

@@ -37,13 +37,13 @@ jobs:
       group: terraform-${{ inputs.environment }}
       cancel-in-progress: false
 
+    permissions:
+      id-token: write 
+      contents: read
+
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
-
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
       - name: Checkout
