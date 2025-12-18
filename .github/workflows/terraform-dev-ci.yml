@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   # Plan for dev on every push in feature/*
   plan-dev-on-feature-push:

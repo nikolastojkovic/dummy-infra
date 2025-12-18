@@ -14,6 +14,10 @@ on:
         options:
           - prod
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   # Staging deploy on every push on main
   apply-staging-on-main:
