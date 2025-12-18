@@ -1,3 +1,10 @@
+locals {
+  default_tags = {
+    Project_name = "demo-app"
+    Environment  = "dev"
+  }
+}
+
 terraform {
   required_providers {
     aws = {
@@ -9,4 +16,8 @@ terraform {
 
 provider "aws" {
   region = "eu-central-1" # dev
+
+  default_tags {
+    tags = local.default_tags
+  }
 }
