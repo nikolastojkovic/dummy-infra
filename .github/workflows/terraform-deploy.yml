@@ -15,9 +15,7 @@ on:
           - prod
 
 jobs:
-  # ----------------------------------------------------
   # Staging deploy on every push on main
-  # ----------------------------------------------------
   apply-staging-on-main:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/terraform-reusable.yml
@@ -26,12 +24,11 @@ jobs:
       environment: "staging"
       working_directory: "envs/staging"
       var_file: "staging.tfvars"
-      aws_role_arn: ${{ secrets.AWS_ROLE_STAGING }}
       aws_region: "eu-west-1"
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_ROLE_STAGING }}
 
-  # ----------------------------------------------------
-  # Prod deploy only manuelly, from main
-  # ----------------------------------------------------
+  # Prod deploy only manual, from main branch
   apply-prod-manual:
     if: github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/terraform-reusable.yml
@@ -40,5 +37,6 @@ jobs:
       environment: "prod"
       working_directory: "envs/prod"
       var_file: "prod.tfvars"
-      aws_role_arn: ${{ secrets.AWS_ROLE_PROD }}
       aws_region: "us-east-1"
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_ROLE_PROD }}
