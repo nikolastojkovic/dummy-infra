@@ -1,7 +1,7 @@
 locals {
   default_tags = {
-    Project_name     = var.project_name
-    Environment = var.env
+    Project_name = var.project_name
+    Environment  = var.env
   }
 }
 
@@ -19,7 +19,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-west-1"   # STAGING region
+  region = "eu-west-1" # STAGING region
 
   default_tags {
     tags = local.default_tags

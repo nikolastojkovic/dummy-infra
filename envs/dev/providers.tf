@@ -1,7 +1,7 @@
 locals {
   default_tags = {
-    Project_name     = var.project_name
-    Environment     = var.env
+    Project_name = var.project_name
+    Environment  = var.env
   }
 }
 
