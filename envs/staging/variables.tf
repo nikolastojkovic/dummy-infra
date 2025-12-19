@@ -39,5 +39,5 @@ variable "ec2_role_arn" {
 variable "project_name" {
   description = "Project name"
   type        = string
-  default     = "staging-demo-app"
+  default     = "demo-app-staging"
 }
