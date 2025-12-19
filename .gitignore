@@ -22,8 +22,12 @@
 # Local variable files
 ########################
 
-# Never commit real tfvars
+# Local variable files
 *.tfvars
+!envs/dev/dev.tfvars
+!envs/staging/staging.tfvars
+!envs/prod/prod.tfvars
+
 
 # Allow tfvars.example templates
 !*.tfvars.example
