@@ -1,0 +1,45 @@
+name: Terraform Dev CI
+
+on:
+  # Run plan when code is pushed to any feature branch
+  push:
+    branches:
+      - "feature/*"
+
+  # Deploy to dev when a PR targeting main is opened/updated
+  pull_request:
+    branches:
+      - main
+
+# Required for GitHub OIDC → AWS AssumeRole
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-plan-dev-on-feature-push:
+    name: Terraform plan (dev) on feature push
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "plan"
+      environment: "dev"
+      working_directory: "envs/dev"
+      var_file: "dev.tfvars"
+      aws_region: "eu-central-1"
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
+
+  terraform-apply-dev-on-pr:
+    name: Terraform apply (dev) on PR to main
+    # Only run for PR events from feature/* branch
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/')
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "apply"
+      environment: "dev"
+      working_directory: "envs/dev"
+      var_file: "dev.tfvars"
+      aws_region: "eu-central-1"
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}

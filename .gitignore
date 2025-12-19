@@ -1,0 +1,52 @@
+########################
+# Terraform directories
+########################
+
+# Local Terraform working directory
+**/.terraform/
+**/.terraform/*
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.lock.info
+
+########################
+# Provider lock files
+########################
+
+# Per-environment lockfiles — GitHub Actions re-generates them
+**/.terraform.lock.hcl
+
+########################
+# Local variable files
+########################
+
+# Never commit real tfvars
+*.tfvars
+
+# Allow tfvars.example templates
+!*.tfvars.example
+
+########################
+# VS Code / Editor files
+########################
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+########################
+# OS files
+########################
+
+.DS_Store
+Thumbs.db
+
+########################
+# Python virtual environments (if ever used)
+########################
+
+venv/
+.env/
