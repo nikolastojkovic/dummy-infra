@@ -5,11 +5,6 @@ on:
     branches:
       - main
 
-# Required for GitHub OIDC → AWS AssumeRole
-permissions:
-    id-token: write
-    contents: read
-
 jobs:
   terraform-checks:
     name: Terraform static checks (fmt, validate, tflint)
@@ -37,7 +32,7 @@ jobs:
       - name: Terraform fmt (check)
         run: terraform fmt -check -recursive
 
-      # Per-environment init without backend (no real AWS calls)
+      # Per-environment init without backend (no AWS communication)
       - name: Terraform init (no backend)
         working-directory: ${{ matrix.env_dir }}
         run: terraform init -backend=false
@@ -46,9 +41,13 @@ jobs:
         working-directory: ${{ matrix.env_dir }}
         run: terraform validate
 
-      # Optional but recommended: linting with TFLint
+      # TFLint installation & run
+      - name: Install TFLint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
       - name: TFLint
         working-directory: ${{ matrix.env_dir }}
-        uses: terraform-linters/tflint-action@v0
-        with:
-          github_token: ${{ github.token }}
+        run: |
+          tflint --init
+          tflint
