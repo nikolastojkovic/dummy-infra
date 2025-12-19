@@ -1,9 +1,12 @@
 name: Terraform Deploy
 
 on:
+  # Automatically deploy to staging on any push to main (after PR merge)
   push:
     branches:
       - main
+
+  # Manually trigger production deployment
   workflow_dispatch:
     inputs:
       environment:
@@ -14,13 +17,14 @@ on:
         options:
           - prod
 
+# Required for GitHub OIDC → AWS AssumeRole
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  # Staging deploy on every push on main
-  apply-staging-on-main:
+  terraform-apply-staging-on-main:
+    name: Terraform apply (staging) on main push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/terraform-reusable.yml
     with:
@@ -32,8 +36,9 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.AWS_ROLE_STAGING }}
 
-  # Prod deploy only manual, from main branch
-  apply-prod-manual:
+  terraform-apply-prod-manual:
+    name: Terraform apply (prod) manual promotion
+    # Ensure this only runs when manually triggered on main
     if: github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/terraform-reusable.yml
     with:

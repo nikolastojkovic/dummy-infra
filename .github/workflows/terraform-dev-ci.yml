@@ -1,20 +1,24 @@
 name: Terraform Dev CI
 
 on:
+  # Run plan when code is pushed to any feature branch
   push:
     branches:
-      - 'feature/*'
+      - "feature/*"
+
+  # Deploy to dev when a PR targeting main is opened/updated
   pull_request:
     branches:
       - main
 
+# Required for GitHub OIDC → AWS AssumeRole
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  # Plan for dev on every push in feature/*
-  plan-dev-on-feature-push:
+  terraform-plan-dev-on-feature-push:
+    name: Terraform plan (dev) on feature push
     if: github.event_name == 'push'
     uses: ./.github/workflows/terraform-reusable.yml
     with:
@@ -26,9 +30,10 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
 
-  # Apply on dev on PR (feature/* -> main)
-  apply-dev-on-pr:
-    if: github.event_name == 'pull_request'
+  terraform-apply-dev-on-pr:
+    name: Terraform apply (dev) on PR to main
+    # Only run for PR events from feature/* branch
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/')
     uses: ./.github/workflows/terraform-reusable.yml
     with:
       action: "apply"
