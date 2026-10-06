@@ -29,18 +29,16 @@ on:
         required: true
 
 jobs:
-  terraform:
-    name: Terraform ${{ inputs.action }} (${{ inputs.environment }})
+  terraform-plan:
+    if: inputs.action == 'plan'
+    name: Terraform plan (${{ inputs.environment }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: ${{ inputs.environment }}
 
-    # Ensure only one Terraform job per env runs at a time
     concurrency:
       group: terraform-${{ inputs.environment }}
       cancel-in-progress: false
 
-    # Required for GitHub OIDC → AWS AssumeRole
     permissions:
       id-token: write
       contents: read
@@ -74,9 +72,51 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
-        if: inputs.action == 'plan'
         run: terraform plan -input=false -var-file="${{ inputs.var_file }}"
 
+
+  terraform-apply:
+    if: inputs.action == 'apply'
+    name: Terraform apply (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.environment }}
+
+    concurrency:
+      group: terraform-${{ inputs.environment }}
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      TF_IN_AUTOMATION: "true"
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws_role_arn }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.3
+
+      - name: Terraform init (remote backend)
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
       - name: Terraform apply
-        if: inputs.action == 'apply'
         run: terraform apply -input=false -auto-approve -var-file="${{ inputs.var_file }}"
