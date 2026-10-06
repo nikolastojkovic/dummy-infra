@@ -1,167 +1,116 @@
-# 🚀 Terraform Multi-Environment CI/CD (Trunk-Based + GitHub Actions)
+# Dummy Infra
 
-This repository demonstrates a clean and realistic **Infrastructure-as-Code (IaC)** setup using:
+Simple Terraform setup for a small multi-environment AWS deployment.
 
-- **Terraform** (module + 3 environments)
-- **Trunk-based development** (`main` as the only long-lived branch)
-- **GitHub Actions CI/CD** with a reusable workflow
-- **AWS S3 backend with locking**
-- **Multi-environment deployment pipeline (dev → staging → prod)**
+## What this repo does
 
-Because this runs on a **personal AWS account**, environments are simulated using **different AWS regions**, while still preserving a real enterprise-style structure.
+- Uses one reusable Terraform module in `modules/app_infra`
+- Keeps separate Terraform config for `dev`, `staging`, and `prod`
+- Stores state remotely in S3
+- Uses GitHub Actions with OIDC to assume AWS roles
+- Runs `plan` on feature branches and `apply` in higher environments
 
----
+## Repository layout
 
-## 📁 Repository Structure
-```
-modules/
-  app_infra/              # Reusable Terraform module (S3 bucket + EC2 + SG)
-
-envs/
-  dev/                    # Dev environment (eu-central-1)
-  staging/                # Staging environment (eu-west-1)
-  prod/                   # Production environment (us-east-1)
-
-.github/workflows/
-  terraform-reusable.yml  # Core plan/apply engine (reusable)
-  terraform-dev-ci.yml    # Feature branch plan + PR → dev deploy
-  terraform-deploy.yml    # Staging deploy (auto) + Prod deploy (manual)
-```
-
-
----
-
-## 🌍 Environment Model (One AWS Account → Multiple Regions)
-
-To simulate multi-account separation in a cost-efficient way, each environment maps to a **different AWS region**:
-
-| Environment | AWS Region     | Purpose                     |
-|-------------|----------------|-----------------------------|
-| **dev**     | eu-central-1   | PR preview environment      |
-| **staging** | eu-west-1      | Auto-deploy after merge     |
-| **prod**    | us-east-1      | Manual production promotion |
-
-Each environment has its own backend key, provider, tfvars, and configuration.
-
----
-
-## ☁️ Terraform Remote State
-
-All environments share a single S3 bucket for remote state:
-
-bucket: **nikola-tf-state-demo**
-
-state keys:
-- dev/app_infra.tfstate
-- staging/app_infra.tfstate
-- prod/app_infra.tfstate
-
-
-The backend uses Terraform's native S3 lockfile:
-
-```hcl
-use_lockfile = true
+```text
+.
+├── envs/
+│   ├── dev/
+│   ├── staging/
+│   └── prod/
+├── modules/
+│   └── app_infra/
+├── .github/workflows/
+│   ├── terraform-reusable.yml
+│   ├── terraform-dev-ci.yml
+│   └── terraform-deploy.yml
+├── README.md
+└── .gitignore
 ```
 
----
+## Environments
 
-## 🧩 Terraform Module (modules/app_infra)
+- `dev` → `eu-central-1`
+- `staging` → `eu-west-1`
+- `prod` → `us-east-1`
 
-The module provisions:
+Each environment has its own backend key and `tfvars` file.
 
-- Secure S3 bucket (public access blocked, encrypted)
-- EC2 instance
-- Security group
-- Randomized bucket suffix for uniqueness
-- Environment tags and flexibility via variables
-- Each environment configures the module via its own *.tfvars.
+## Remote state
 
----
+Terraform uses a shared S3 backend:
 
+- Bucket: `nikola-tf-state-demo`
+- Keys:
+  - `dev/app_infra.tfstate`
+  - `staging/app_infra.tfstate`
+  - `prod/app_infra.tfstate`
 
-## 🔄 CI/CD Pipeline (GitHub Actions)
+This is configured with `use_lockfile = true`.
 
-This project uses trunk-based development with main as the single source of truth.
+## Current GitHub Actions workflow
 
-1️⃣ Push to feature/*
+This is a trunk-based development model with GitHub Flow-style pull requests, and a gated environment promotion pipeline from Dev → Staging → Production.
 
-- Runs terraform plan on the dev environment.
-- This provides early feedback without modifying infrastructure.
+Feature branches are short-lived and changes are integrated into `main` through pull requests. Pull requests run Terraform validation and plan, while merges to `main` trigger deployment to Dev, followed by protected Staging and Production environments requiring manual approval.
 
-2️⃣ Pull Request → Deploy to DEV
+### Dev checks
 
-Opening a PR into main triggers:
+- Push to `feature/*` → runs `terraform plan` for `dev`
+- Pull request to `main` from a feature branch → runs `terraform plan` for `dev`
 
-- terraform apply to dev
-- Dev acts as a shared preview/testing environment
+### Deployments
 
-3️⃣ Merge to main → Auto-Deploy to STAGING
+```mermaid
+flowchart TD
+    A[feature] --> B[PR checks + plan]
+    B --> C[merge]
+    C --> D[Dev deploy]
+    D --> E[Staging approval]
+    E --> F[Staging deploy]
+    F --> G[Prod approval]
+    G --> H[Prod deploy]
+```
 
-When a PR is merged:
+- Push to `main` → runs `terraform apply` for `staging` (this is the normal path after a merge)
+- Manual workflow dispatch on `main` for `prod` → runs `terraform apply` for `prod`
 
-- A push to main triggers terraform apply for staging
-- Staging always reflects the latest code in main
+Important: both jobs target a GitHub environment via `environment: ${{ inputs.environment }}` in the reusable workflow. If the `staging` or `prod` environment is configured with required reviewers/approvals, the workflow pauses for approval before Terraform runs.
 
-4️⃣ Manual Promotion to PROD
+The reusable workflow does this:
 
-- Production deployment requires a manual workflow_dispatch trigger.
-- This mirrors real-world approval and release processes.
+1. Checkout repo
+2. Configure AWS credentials via OIDC
+3. Setup Terraform
+4. `terraform init`
+5. `terraform validate`
+6. `terraform plan` or `terraform apply`
 
-## 🔐 Security: GitHub OIDC → AWS IAM Roles
+A possible improvement is to save the Terraform plan output as a GitHub Actions artifact after the plan step, then reuse that artifact in later environment jobs. This makes the pipeline easier to audit and reduces the risk of planning in one stage and applying a different state in another.
 
-GitHub Actions authenticates to AWS using OIDC, not long-lived access keys.
-
-Required repository secrets per environment:
-
-- AWS_ROLE_DEV
-- AWS_ROLE_STAGING
-- AWS_ROLE_PROD
-
-Each secret contains the ARN of an IAM role with permissions scoped to its environment.
-
-This ensures:
-- No stored AWS keys
-- Least-privilege separation
-- Enterprise-grade CI/CD security
-
----
-
-## ▶️ Running Terraform Locally
+## Local usage
 
 Example for dev:
-```
+
+```bash
 cd envs/dev
 terraform init
 terraform plan -var-file="dev.tfvars"
 terraform apply -var-file="dev.tfvars"
+```
+
+To clean up:
+
+```bash
 terraform destroy -var-file="dev.tfvars"
 ```
 
-Repeat for staging/prod using their respective directories and tfvars files.
+Repeat the same pattern for `staging` and `prod` using their matching `tfvars` files.
 
-## 💡 Notes
+## Notes
 
-A real enterprise setup would use separate AWS accounts per environment.
-This repository simulates that model using multiple regions in a single account to minimize cost.
-The CI/CD pipeline is intentionally simple and realistic:
-
-- Preview on dev
-- Auto-deploy to staging
-- Manual promotion to prod
-- Reusable workflows keep the code DRY, maintainable, and consistent.
-
-## ✔️ Summary
-
-This project provides:
-
-- Modular Terraform infrastructure
-- Three isolated environments
-- Remote state with S3 locking
-- Reusable GitHub Actions workflows
-- Secure AWS OIDC authentication
-- Modern trunk-based CI/CD workflow
-- Realistic multi-environment promotion
-- Low AWS cost footprint
-- Perfect foundation for real-world IaC automation or technical assessment submissions.
+- AWS auth is done with GitHub OIDC, not static keys.
+- The repo uses a reusable workflow to keep pipeline logic consistent.
+- This is intentionally simple and lightweight for a demo or personal IaC project.
 
 
