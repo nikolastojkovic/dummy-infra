@@ -42,12 +42,13 @@ jobs:
         run: terraform validate
 
       # TFLint installation & run
-      - name: Install TFLint
-        run: |
-          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v5
 
-      - name: TFLint
+      - name: Initialize TFLint
         working-directory: ${{ matrix.env_dir }}
-        run: |
-          tflint --init
-          tflint
+        run: tflint --init
+
+      - name: Run TFLint
+        working-directory: ${{ matrix.env_dir }}
+        run: tflint
