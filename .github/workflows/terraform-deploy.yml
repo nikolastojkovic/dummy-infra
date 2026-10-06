@@ -1,12 +1,10 @@
 name: Terraform Deploy
 
 on:
-  # Automatically deploy to DEV on any push to main (after PR merge)
   push:
     branches:
       - main
 
-# Required for GitHub OIDC → AWS AssumeRole
 permissions:
   id-token: write
   contents: read
@@ -37,9 +35,19 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.AWS_ROLE_STAGING }}
 
+  staging-approval:
+    name: Staging deployment approval
+    needs: terraform-plan-staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Approval granted
+        run: echo "Staging deployment approved."
+
   terraform-apply-staging:
     name: Terraform apply (staging)
-    needs: terraform-plan-staging
+    needs: staging-approval
     uses: ./.github/workflows/terraform-reusable.yml
     with:
       action: "apply"
@@ -63,9 +71,19 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.AWS_ROLE_PROD }}
 
+  prod-approval:
+    name: Production deployment approval
+    needs: terraform-plan-prod
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Approval granted
+        run: echo "Production deployment approved."
+
   terraform-apply-prod:
     name: Terraform apply (prod)
-    needs: terraform-plan-prod
+    needs: prod-approval
     uses: ./.github/workflows/terraform-reusable.yml
     with:
       action: "apply"
