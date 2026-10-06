@@ -10,6 +10,7 @@ Simple Terraform setup for a small multi-environment AWS deployment.
 - Uses GitHub Actions with OIDC to assume AWS IAM roles
 - Runs Terraform static checks and plans in CI
 - Promotes changes sequentially from Dev → Staging → Production
+- Requires manual approval before Staging and Production deployments
 
 ## Repository layout
 
@@ -60,9 +61,11 @@ This repository follows a trunk-based development model with GitHub Flow-style p
 
 Feature branches are short-lived and changes are integrated into `main` through pull requests.
 
-Pull requests run Terraform static checks and a Dev plan. After a change is merged into `main`, the deployment pipeline promotes the change sequentially through Dev, Staging, and Production.
+Pull requests run Terraform static checks and a Dev plan.
 
-### CI checks
+After a change is merged into `main`, the deployment pipeline promotes the change sequentially through Dev, Staging, and Production.
+
+## CI checks
 
 Pull requests run Terraform checks for all environments:
 
@@ -74,7 +77,9 @@ For feature branches and pull requests targeting `main`, the Dev environment als
 
 - `terraform plan`
 
-### Deployment flow
+These checks provide early validation before changes are merged into `main`.
+
+## Deployment flow
 
 ```mermaid
 flowchart TD
@@ -83,9 +88,11 @@ flowchart TD
     C --> D[Merge to main]
     D --> E[Dev Terraform Apply]
     E --> F[Staging Terraform Plan]
-    F --> G[Staging Terraform Apply]
-    G --> H[Production Terraform Plan]
-    H --> I[Production Terraform Apply]
+    F --> G[Staging Approval]
+    G --> H[Staging Terraform Apply]
+    H --> I[Production Terraform Plan]
+    I --> J[Production Approval]
+    J --> K[Production Terraform Apply]
 ```
 
 The deployment flow follows a sequential promotion model:
@@ -94,23 +101,28 @@ The deployment flow follows a sequential promotion model:
 2. Pull request → Terraform checks and Dev plan
 3. Merge to `main` → Dev Terraform apply
 4. Staging Terraform plan
-5. Staging Terraform apply
-6. Production Terraform plan
-7. Production Terraform apply
+5. Manual approval for Staging
+6. Staging Terraform apply
+7. Production Terraform plan
+8. Manual approval for Production
+9. Production Terraform apply
 
-Staging and Production are represented as separate GitHub Environments. If environment protection rules are configured with required reviewers, the workflow pauses for approval before the corresponding deployment proceeds.
+Dev is deployed automatically after a successful merge to `main`.
 
-The reusable workflow targets the GitHub environment dynamically:
+Staging and Production require explicit manual approval before Terraform apply is executed.
 
-```yaml
-environment: ${{ inputs.environment }}
-```
+The approval is implemented using dedicated GitHub Actions jobs targeting the corresponding GitHub Environment:
 
-This allows the same reusable Terraform workflow to be used consistently across Dev, Staging, and Production.
+- `staging-approval` → `staging`
+- `prod-approval` → `prod`
+
+This keeps Terraform plan execution independent from environment protection rules, so plans can run without waiting for deployment approval.
 
 ## Reusable Terraform workflow
 
-The reusable workflow performs the following steps:
+The reusable workflow accepts an `action` input and performs either a Terraform plan or apply.
+
+The workflow performs the following steps:
 
 1. Checkout repository
 2. Configure AWS credentials via GitHub OIDC
@@ -125,6 +137,8 @@ The workflow also uses environment-specific:
 - AWS region
 - Terraform working directory
 - Terraform variables file
+
+The same reusable workflow is used for Dev, Staging, and Production.
 
 ## Local usage
 
@@ -152,5 +166,7 @@ Repeat the same pattern for `staging` and `prod` using their matching `tfvars` f
 - Terraform state is stored remotely in S3.
 - Each environment has an independent Terraform state.
 - The repository uses a reusable GitHub Actions workflow to keep Terraform pipeline logic consistent.
-- Staging and Production are promoted sequentially after successful lower-environment deployment.
+- Dev is deployed automatically after merging to `main`.
+- Staging and Production require manual approval before deployment.
+- Staging and Production are deployed sequentially after successful lower-environment deployment.
 - The project intentionally keeps the CI/CD implementation simple and lightweight for a demo or personal IaC project.
