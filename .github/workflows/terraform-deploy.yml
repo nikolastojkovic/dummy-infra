@@ -24,9 +24,22 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
 
+  terraform-plan-staging:
+    name: Terraform plan (staging)
+    needs: terraform-apply-dev
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "plan"
+      environment: "staging"
+      working_directory: "envs/staging"
+      var_file: "staging.tfvars"
+      aws_region: "eu-west-1"
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_ROLE_STAGING }}
+
   terraform-apply-staging:
     name: Terraform apply (staging)
-    needs: terraform-apply-dev
+    needs: terraform-plan-staging
     uses: ./.github/workflows/terraform-reusable.yml
     with:
       action: "apply"
@@ -37,9 +50,22 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.AWS_ROLE_STAGING }}
 
+  terraform-plan-prod:
+    name: Terraform plan (prod)
+    needs: terraform-apply-staging
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      action: "plan"
+      environment: "prod"
+      working_directory: "envs/prod"
+      var_file: "prod.tfvars"
+      aws_region: "us-east-1"
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_ROLE_PROD }}
+
   terraform-apply-prod:
     name: Terraform apply (prod)
-    needs: terraform-apply-staging
+    needs: terraform-plan-prod
     uses: ./.github/workflows/terraform-reusable.yml
     with:
       action: "apply"

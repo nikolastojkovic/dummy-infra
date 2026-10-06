@@ -5,10 +5,11 @@ Simple Terraform setup for a small multi-environment AWS deployment.
 ## What this repo does
 
 - Uses one reusable Terraform module in `modules/app_infra`
-- Keeps separate Terraform config for `dev`, `staging`, and `prod`
-- Stores state remotely in S3
-- Uses GitHub Actions with OIDC to assume AWS roles
-- Runs `plan` on feature branches and `apply` in higher environments
+- Keeps separate Terraform configuration for `dev`, `staging`, and `prod`
+- Stores Terraform state remotely in S3
+- Uses GitHub Actions with OIDC to assume AWS IAM roles
+- Runs Terraform static checks and plans in CI
+- Promotes changes sequentially from Dev → Staging → Production
 
 ## Repository layout
 
@@ -22,6 +23,7 @@ Simple Terraform setup for a small multi-environment AWS deployment.
 │   └── app_infra/
 ├── .github/workflows/
 │   ├── terraform-reusable.yml
+│   ├── terraform-checks.yml
 │   ├── terraform-dev-ci.yml
 │   └── terraform-deploy.yml
 ├── README.md
@@ -34,7 +36,7 @@ Simple Terraform setup for a small multi-environment AWS deployment.
 - `staging` → `eu-west-1`
 - `prod` → `us-east-1`
 
-Each environment has its own backend key and `tfvars` file.
+Each environment has its own backend state key and `tfvars` file.
 
 ## Remote state
 
@@ -46,54 +48,91 @@ Terraform uses a shared S3 backend:
   - `staging/app_infra.tfstate`
   - `prod/app_infra.tfstate`
 
-This is configured with `use_lockfile = true`.
+The backend uses:
 
-## Current GitHub Actions workflow
+```hcl
+use_lockfile = true
+```
 
-This is a trunk-based development model with GitHub Flow-style pull requests, and a gated environment promotion pipeline from Dev → Staging → Production.
+## GitHub Actions workflow
 
-Feature branches are short-lived and changes are integrated into `main` through pull requests. Pull requests run Terraform validation and plan, while merges to `main` trigger deployment to Dev, followed by protected Staging and Production environments requiring manual approval.
+This repository follows a trunk-based development model with GitHub Flow-style pull requests.
 
-### Dev checks
+Feature branches are short-lived and changes are integrated into `main` through pull requests.
 
-- Push to `feature/*` → runs `terraform plan` for `dev`
-- Pull request to `main` from a feature branch → runs `terraform plan` for `dev`
+Pull requests run Terraform static checks and a Dev plan. After a change is merged into `main`, the deployment pipeline promotes the change sequentially through Dev, Staging, and Production.
 
-### Deployments
+### CI checks
+
+Pull requests run Terraform checks for all environments:
+
+- `terraform fmt -check`
+- `terraform validate`
+- `tflint`
+
+For feature branches and pull requests targeting `main`, the Dev environment also runs:
+
+- `terraform plan`
+
+### Deployment flow
 
 ```mermaid
 flowchart TD
-    A[feature] --> B[PR checks + plan]
-    B --> C[merge]
-    C --> D[Dev deploy]
-    D --> E[Staging approval]
-    E --> F[Staging deploy]
-    F --> G[Prod approval]
-    G --> H[Prod deploy]
+    A[Feature branch] --> B[Dev Terraform Plan]
+    B --> C[Pull Request]
+    C --> D[Merge to main]
+    D --> E[Dev Terraform Apply]
+    E --> F[Staging Terraform Plan]
+    F --> G[Staging Terraform Apply]
+    G --> H[Production Terraform Plan]
+    H --> I[Production Terraform Apply]
 ```
 
-- Push to `main` → runs `terraform apply` for `staging` (this is the normal path after a merge)
-- Manual workflow dispatch on `main` for `prod` → runs `terraform apply` for `prod`
+The deployment flow follows a sequential promotion model:
 
-Important: both jobs target a GitHub environment via `environment: ${{ inputs.environment }}` in the reusable workflow. If the `staging` or `prod` environment is configured with required reviewers/approvals, the workflow pauses for approval before Terraform runs.
+1. Feature branch → Dev Terraform plan
+2. Pull request → Terraform checks and Dev plan
+3. Merge to `main` → Dev Terraform apply
+4. Staging Terraform plan
+5. Staging Terraform apply
+6. Production Terraform plan
+7. Production Terraform apply
 
-The reusable workflow does this:
+Staging and Production are represented as separate GitHub Environments. If environment protection rules are configured with required reviewers, the workflow pauses for approval before the corresponding deployment proceeds.
 
-1. Checkout repo
-2. Configure AWS credentials via OIDC
+The reusable workflow targets the GitHub environment dynamically:
+
+```yaml
+environment: ${{ inputs.environment }}
+```
+
+This allows the same reusable Terraform workflow to be used consistently across Dev, Staging, and Production.
+
+## Reusable Terraform workflow
+
+The reusable workflow performs the following steps:
+
+1. Checkout repository
+2. Configure AWS credentials via GitHub OIDC
 3. Setup Terraform
-4. `terraform init`
-5. `terraform validate`
-6. `terraform plan` or `terraform apply`
+4. Initialize the remote backend
+5. Run `terraform validate`
+6. Run either `terraform plan` or `terraform apply`
 
-A possible improvement is to save the Terraform plan output as a GitHub Actions artifact after the plan step, then reuse that artifact in later environment jobs. This makes the pipeline easier to audit and reduces the risk of planning in one stage and applying a different state in another.
+The workflow also uses environment-specific:
+
+- AWS IAM role
+- AWS region
+- Terraform working directory
+- Terraform variables file
 
 ## Local usage
 
-Example for dev:
+Example for Dev:
 
 ```bash
 cd envs/dev
+
 terraform init
 terraform plan -var-file="dev.tfvars"
 terraform apply -var-file="dev.tfvars"
@@ -109,8 +148,9 @@ Repeat the same pattern for `staging` and `prod` using their matching `tfvars` f
 
 ## Notes
 
-- AWS auth is done with GitHub OIDC, not static keys.
-- The repo uses a reusable workflow to keep pipeline logic consistent.
-- This is intentionally simple and lightweight for a demo or personal IaC project.
-
-
+- AWS authentication uses GitHub OIDC instead of static AWS access keys.
+- Terraform state is stored remotely in S3.
+- Each environment has an independent Terraform state.
+- The repository uses a reusable GitHub Actions workflow to keep Terraform pipeline logic consistent.
+- Staging and Production are promoted sequentially after successful lower-environment deployment.
+- The project intentionally keeps the CI/CD implementation simple and lightweight for a demo or personal IaC project.
