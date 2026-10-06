@@ -30,13 +30,13 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
 
-  terraform-apply-dev-on-pr:
-    name: Terraform apply (dev) on PR to main
+  terraform-plan-dev-on-pr:
+    name: Terraform plan (dev) on PR to main
     # Only run for PR events from feature/* branch
     if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/')
     uses: ./.github/workflows/terraform-reusable.yml
     with:
-      action: "apply"
+      action: "plan"
       environment: "dev"
       working_directory: "envs/dev"
       var_file: "dev.tfvars"
