@@ -73,9 +73,10 @@ Pull requests run Terraform checks for all environments:
 - `terraform validate`
 - `tflint`
 
-For feature branches and pull requests targeting `main`, the Dev environment also runs:
+Terraform plan is also executed for the Dev environment:
 
-- `terraform plan`
+- On pushes to `feature/*` branches
+- On every pull request targeting `main`
 
 These checks provide early validation before changes are merged into `main`.
 
