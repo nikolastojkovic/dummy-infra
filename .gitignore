@@ -12,13 +12,6 @@
 *.tfstate.lock.info
 
 ########################
-# Provider lock files
-########################
-
-# Per-environment lockfiles — GitHub Actions re-generates them
-**/.terraform.lock.hcl
-
-########################
 # Local variable files
 ########################
 
