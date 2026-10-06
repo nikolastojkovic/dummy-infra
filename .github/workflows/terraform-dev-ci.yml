@@ -28,7 +28,7 @@ jobs:
       var_file: "dev.tfvars"
       aws_region: "eu-central-1"
     secrets:
-      aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
+      aws_role_arn: ${{ vars.AWS_ROLE_DEV }}
 
   terraform-plan-dev-on-pr:
     name: Terraform plan (dev) on PR to main
@@ -42,4 +42,4 @@ jobs:
       var_file: "dev.tfvars"
       aws_region: "eu-central-1"
     secrets:
-      aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
+      aws_role_arn: ${{ vars.AWS_ROLE_DEV }}

@@ -22,7 +22,7 @@ jobs:
       var_file: "dev.tfvars"
       aws_region: "eu-central-1"
     secrets:
-      aws_role_arn: ${{ secrets.AWS_ROLE_DEV }}
+      aws_role_arn: ${{ vars.AWS_ROLE_DEV }}
 
   terraform-plan-staging:
     name: Terraform plan (staging)
@@ -48,7 +48,7 @@ jobs:
       var_file: "staging.tfvars"
       aws_region: "eu-west-1"
     secrets:
-      aws_role_arn: ${{ secrets.AWS_ROLE_STAGING }}
+      aws_role_arn: ${{ vars.AWS_ROLE_STAGING }}
 
   terraform-plan-prod:
     name: Terraform plan (prod)
@@ -74,4 +74,4 @@ jobs:
       var_file: "prod.tfvars"
       aws_region: "us-east-1"
     secrets:
-      aws_role_arn: ${{ secrets.AWS_ROLE_PROD }}
+      aws_role_arn: ${{ vars.AWS_ROLE_PROD }}
