@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
   }
 }
 
@@ -50,23 +54,41 @@ resource "aws_s3_bucket_policy" "this" {
 
   policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [
       {
-        Sid       = "EC2ReadWriteAccess"
+        Sid       = "AllowBucketListing"
         Effect    = "Allow"
         Principal = { AWS = var.ec2_role_arn }
+
         Action = [
-          "s3:GetObject",
-          "s3:PutObject",
           "s3:ListBucket"
         ]
-        Resource = [
-          aws_s3_bucket.this.arn,
-          "${aws_s3_bucket.this.arn}/*"
+
+        Resource = aws_s3_bucket.this.arn
+      },
+      {
+        Sid       = "AllowObjectAccess"
+        Effect    = "Allow"
+        Principal = { AWS = var.ec2_role_arn }
+
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
         ]
+
+        Resource = "${aws_s3_bucket.this.arn}/*"
       }
     ]
   })
+}
+
+resource "aws_s3_bucket_versioning" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 
 resource "aws_security_group" "ec2_sg" {
